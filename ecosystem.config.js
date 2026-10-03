@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'msgflow-backend',
-      script: 'backend/dist/src/main.js',
+      script: 'backend/dist/main.js',
       instances: 'max', // Scale across all available CPU cores for 1000+ users
       exec_mode: 'cluster',
       env: {

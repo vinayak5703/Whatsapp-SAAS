@@ -29,7 +29,8 @@
    npm install -g pm2-windows-service
    
    # Start backend
-   pm2 start dist/src/main.js --name "msgflow-backend"
+   pm2 start dist/main.js --name "msgflow-backend"
+   # Or directly: node dist/main.js
    pm2 save
    ```
 
