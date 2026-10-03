@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../auth/auth.decorators';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
@@ -12,8 +12,9 @@ export class DashboardController {
   @Get('dashboard/summary')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get workspace metrics and dashboard summary' })
-  async getSummary() {
-    const summary = await this.whatsapp.getDashboardSummary();
+  async getSummary(@Req() req: any) {
+    const tenantId = req.user?.tenantId || req.headers?.['x-tenant-id'];
+    const summary = await this.whatsapp.getDashboardSummary(tenantId);
     return {
       success: true,
       data: summary,
@@ -23,8 +24,9 @@ export class DashboardController {
   @Get('logs/messages')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get recent message logs' })
-  async getMessageLogs() {
-    const messages = await this.whatsapp.getRecentMessages();
+  async getMessageLogs(@Req() req: any) {
+    const tenantId = req.user?.tenantId || req.headers?.['x-tenant-id'];
+    const messages = await this.whatsapp.getRecentMessages(tenantId);
     return {
       success: true,
       data: {

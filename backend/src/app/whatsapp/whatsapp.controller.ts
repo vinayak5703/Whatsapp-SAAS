@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../auth/auth.decorators';
 import { WhatsAppService } from './whatsapp.service';
@@ -67,7 +67,10 @@ export class WhatsAppController {
   @Post('send')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send a single WhatsApp message' })
-  async sendMessage(@Body() body: { recipient?: string; to?: string; body?: string; text?: string }) {
+  async sendMessage(
+    @Req() req: any,
+    @Body() body: { recipient?: string; to?: string; body?: string; text?: string; tenantId?: string },
+  ) {
     const destination = body.recipient || body.to;
     const message = body.body || body.text;
     if (!destination || !message) {
@@ -76,7 +79,8 @@ export class WhatsAppController {
         message: 'Recipient and message body are required.',
       };
     }
-    const result = await this.whatsapp.sendMessage(destination, message);
+    const tenantId = req.user?.tenantId || req.headers?.['x-tenant-id'] || body.tenantId;
+    const result = await this.whatsapp.sendMessage(destination, message, undefined, tenantId);
     return {
       success: true,
       data: result,
@@ -88,6 +92,7 @@ export class WhatsAppController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send messages to multiple contacts and groups' })
   async sendBulk(
+    @Req() req: any,
     @Body()
     payload: {
       recipients?: string[];
@@ -96,15 +101,18 @@ export class WhatsAppController {
       body?: string;
       message?: string;
       delayMs?: number;
+      tenantId?: string;
     },
   ) {
     const bodyText = payload.body || payload.message || '';
+    const tenantId = req.user?.tenantId || req.headers?.['x-tenant-id'] || payload.tenantId;
     const result = await this.whatsapp.sendBulk({
       recipients: payload.recipients,
       groups: payload.groups,
       manualNumbers: payload.manualNumbers,
       body: bodyText,
       delayMs: payload.delayMs,
+      tenantId,
     });
     return {
       success: true,

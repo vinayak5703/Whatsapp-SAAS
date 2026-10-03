@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, Query } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Query, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../auth/auth.decorators';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
@@ -13,11 +13,13 @@ export class LogsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'List dynamic activity and audit logs' })
   async getLogs(
+    @Req() req: any,
     @Query('limit') limit?: number,
     @Query('search') search?: string,
     @Query('status') status?: string,
   ) {
-    const messages = await this.whatsapp.getRecentMessages();
+    const tenantId = req.user?.tenantId || req.headers?.['x-tenant-id'];
+    const messages = await this.whatsapp.getRecentMessages(tenantId);
     const querySearch = (search || '').trim().toLowerCase();
     const filterStatus = (status || '').trim().toLowerCase();
 
@@ -56,9 +58,10 @@ export class LogsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'List message logs' })
   async getMessageLogs(
+    @Req() req: any,
     @Query('limit') limit?: number,
     @Query('search') search?: string,
   ) {
-    return this.getLogs(limit, search);
+    return this.getLogs(req, limit, search);
   }
 }

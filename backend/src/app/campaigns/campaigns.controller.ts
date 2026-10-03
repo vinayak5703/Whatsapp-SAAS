@@ -8,6 +8,7 @@ import {
   Param,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -19,6 +20,7 @@ import { atomicWriteJson, safeReadJson } from '../utils/storage.util';
 
 export interface CampaignRecord {
   id: string;
+  tenantId?: string;
   name: string;
   message: string;
   status: 'draft' | 'scheduled' | 'queued' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
@@ -47,10 +49,16 @@ export class CampaignsController {
   @Get()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'List all campaigns' })
-  async listCampaigns(@Query('limit') limit?: number, @Query('search') search?: string) {
+  async listCampaigns(
+    @Req() req: any,
+    @Query('limit') limit?: number,
+    @Query('search') search?: string,
+  ) {
     this.loadCampaignsFromDisk();
+    const tenantId = req.user?.tenantId || req.headers?.['x-tenant-id'];
     const querySearch = (search || '').trim().toLowerCase();
     const filtered = this.campaigns.filter((c) => {
+      if (tenantId && c.tenantId && c.tenantId !== tenantId) return false;
       if (!querySearch) return true;
       return c.name.toLowerCase().includes(querySearch) || c.message.toLowerCase().includes(querySearch);
     });
@@ -81,6 +89,7 @@ export class CampaignsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new campaign' })
   async createCampaign(
+    @Req() req: any,
     @Body()
     body: {
       name: string;
@@ -89,9 +98,11 @@ export class CampaignsController {
       recipients?: string[];
       groups?: string[];
       media?: MediaPayload;
+      tenantId?: string;
     },
   ) {
     this.loadCampaignsFromDisk();
+    const tenantId = req.user?.tenantId || req.headers?.['x-tenant-id'] || body.tenantId;
     const contactsList = await this.whatsapp.getContacts({ limit: 1000 });
     const groupsList = await this.whatsapp.getGroups({ limit: 1000 });
 
@@ -102,6 +113,7 @@ export class CampaignsController {
 
     const newCampaign: CampaignRecord = {
       id: randomUUID(),
+      tenantId,
       name: body.name.trim(),
       message: body.message.trim(),
       status: body.scheduledAt ? 'scheduled' : 'draft',
@@ -215,6 +227,7 @@ export class CampaignsController {
           body: campaign.message,
           media: campaign.media,
           delayMs: 1500,
+          tenantId: campaign.tenantId,
         });
 
         campaign.sentCount = result.sent;

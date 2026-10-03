@@ -110,6 +110,7 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
 
   private readonly messageHistory: Array<{
     id: string;
+    tenantId?: string;
     recipient: string;
     status: 'sent' | 'failed' | 'delivered';
     body?: string;
@@ -751,7 +752,7 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async sendMessage(toPhoneOrJid: string, text: string, media?: MediaPayload): Promise<any> {
+  async sendMessage(toPhoneOrJid: string, text: string, media?: MediaPayload, tenantId?: string): Promise<any> {
     if (!this.isConnected() || !this.sock) {
       throw new Error('WhatsApp is not connected. Please scan the QR code first.');
     }
@@ -767,6 +768,7 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
 
     this.messageHistory.unshift({
       id: res?.key?.id || `msg-${Date.now()}`,
+      tenantId,
       recipient: toPhoneOrJid,
       status: 'sent',
       body: text,
@@ -786,6 +788,7 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
     body: string;
     delayMs?: number;
     media?: MediaPayload;
+    tenantId?: string;
   }): Promise<BulkSendResult> {
     if (!this.isConnected() || !this.sock) {
       throw new Error('WhatsApp is not connected. Please scan the QR code first.');
@@ -886,6 +889,7 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
 
         this.messageHistory.unshift({
           id: msgId,
+          tenantId: payload.tenantId,
           recipient: target.display,
           status: 'sent',
           body: customizedBody,
@@ -905,6 +909,7 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
 
         this.messageHistory.unshift({
           id: `fail-${Date.now()}-${i}`,
+          tenantId: payload.tenantId,
           recipient: target.display,
           status: 'failed',
           body: customizedBody,
@@ -930,13 +935,18 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async getDashboardSummary(): Promise<any> {
+  async getDashboardSummary(tenantId?: string): Promise<any> {
     const contacts = await this.getContacts({ limit: 1000 });
     const groups = await this.getGroups({ limit: 1000 });
 
-    const totalSent = this.messageHistory.filter((m) => m.status === 'sent' || m.status === 'delivered').length;
-    const totalFailed = this.messageHistory.filter((m) => m.status === 'failed').length;
-    const mediaSent = this.messageHistory.filter((m) => m.hasMedia).length;
+    // Multi-tenant data isolation: filter messages strictly for the logged in tenant/user
+    const tenantMessages = tenantId
+      ? this.messageHistory.filter((m) => m.tenantId === tenantId)
+      : this.messageHistory;
+
+    const totalSent = tenantMessages.filter((m) => m.status === 'sent' || m.status === 'delivered').length;
+    const totalFailed = tenantMessages.filter((m) => m.status === 'failed').length;
+    const mediaSent = tenantMessages.filter((m) => m.hasMedia).length;
 
     const days: Array<{ date: string; dayLabel: string; sent: number; failed: number }> = [];
     const now = new Date();
@@ -956,12 +966,12 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
       const dateKey = getLocalDateKey(d);
       const dayName = dayNames[d.getDay()];
 
-      const daySent = this.messageHistory.filter((m) => {
+      const daySent = tenantMessages.filter((m) => {
         const mDate = getLocalDateKey(new Date(m.createdAt));
         return mDate === dateKey && (m.status === 'sent' || m.status === 'delivered');
       }).length;
 
-      const dayFailed = this.messageHistory.filter((m) => {
+      const dayFailed = tenantMessages.filter((m) => {
         const mDate = getLocalDateKey(new Date(m.createdAt));
         return mDate === dateKey && m.status === 'failed';
       }).length;
@@ -975,7 +985,7 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
     }
 
     const todayKey = getLocalDateKey(now);
-    const messagesSentToday = this.messageHistory.filter((m) => {
+    const messagesSentToday = tenantMessages.filter((m) => {
       const mDate = getLocalDateKey(new Date(m.createdAt));
       return mDate === todayKey && (m.status === 'sent' || m.status === 'delivered');
     }).length;
@@ -991,15 +1001,18 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
       campaignsRunning: 0,
       campaignsCompleted: totalSent > 0 ? 1 : 0,
       mediaSent,
-      apiUsage: this.messageHistory.length,
+      apiUsage: tenantMessages.length,
       queuePending: 0,
       queueFailed: 0,
       messageVolume: days,
-      latestMessages: this.messageHistory.slice(0, 10),
+      latestMessages: tenantMessages.slice(0, 10),
     };
   }
 
-  async getRecentMessages(): Promise<any[]> {
+  async getRecentMessages(tenantId?: string): Promise<any[]> {
+    if (tenantId) {
+      return this.messageHistory.filter((m) => m.tenantId === tenantId).slice(0, 50);
+    }
     return this.messageHistory.slice(0, 50);
   }
 }

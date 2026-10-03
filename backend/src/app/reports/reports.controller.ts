@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, Query } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Query, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../auth/auth.decorators';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
@@ -13,12 +13,14 @@ export class ReportsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get overall workspace reports and delivery analytics' })
   async getReports(
+    @Req() req: any,
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
     @Query('limit') limit?: number,
   ) {
-    const summary = await this.whatsapp.getDashboardSummary();
-    const allMessages = await this.whatsapp.getRecentMessages();
+    const tenantId = req.user?.tenantId || req.headers?.['x-tenant-id'];
+    const summary = await this.whatsapp.getDashboardSummary(tenantId);
+    const allMessages = await this.whatsapp.getRecentMessages(tenantId);
 
     const fromTime = dateFrom ? new Date(dateFrom).getTime() : 0;
     const toTime = dateTo ? new Date(dateTo).getTime() + 86400000 : Infinity;
@@ -28,10 +30,10 @@ export class ReportsController {
       return t >= fromTime && t <= toTime;
     });
 
-    const total = filtered.length || summary.apiUsage || 0;
-    const sent = filtered.filter((m) => m.status === 'sent' || m.status === 'delivered').length || summary.messagesDelivered || 0;
-    const failed = filtered.filter((m) => m.status === 'failed').length || summary.messagesFailed || 0;
-    const deliveryRate = total > 0 ? Math.round((sent / total) * 100) : 100;
+    const total = filtered.length || (tenantId ? 0 : summary.apiUsage || 0);
+    const sent = filtered.filter((m) => m.status === 'sent' || m.status === 'delivered').length || (tenantId ? 0 : summary.messagesDelivered || 0);
+    const failed = filtered.filter((m) => m.status === 'failed').length || (tenantId ? 0 : summary.messagesFailed || 0);
+    const deliveryRate = total > 0 ? Math.round((sent / total) * 100) : (total === 0 ? 0 : 100);
     const readRate = sent > 0 ? 88 : 0;
 
     return {
@@ -63,12 +65,14 @@ export class ReportsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get message level delivery report' })
   async getMessageReport(
+    @Req() req: any,
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
     @Query('limit') limit?: number,
     @Query('search') search?: string,
   ) {
-    const allMessages = await this.whatsapp.getRecentMessages();
+    const tenantId = req.user?.tenantId || req.headers?.['x-tenant-id'];
+    const allMessages = await this.whatsapp.getRecentMessages(tenantId);
     const querySearch = (search || '').trim().toLowerCase();
 
     const fromTime = dateFrom ? new Date(dateFrom).getTime() : 0;
