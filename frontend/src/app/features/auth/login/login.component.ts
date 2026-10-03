@@ -649,8 +649,8 @@ export class LoginComponent {
   readonly ShieldCheck = ShieldCheck;
 
   readonly loginForm = this.formBuilder.nonNullable.group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(6)]],
+    email: ['vinayakbhoskar@gmail.com', [Validators.required, Validators.email]],
+    password: ['Password123!', [Validators.required, Validators.minLength(6)]],
   });
 
   signIn(): void {

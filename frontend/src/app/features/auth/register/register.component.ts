@@ -677,12 +677,13 @@ export class RegisterComponent {
   private getRegistrationError(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
       if (error.status === 409) {
-        return 'हा ईमेल आधीच नोंदणीकृत आहे (This email is already registered). कृपया लॉगिन करा किंवा दुसरा ईमेल आयडी वापरा.';
+        return 'हा ईमेल आधीच नोंदणीकृत आहे (This email is already registered). कृपया Sign in करा किंवा दुसरा नवीन ईमेल आयडी वापरा.';
       }
       const message = error.error?.message;
       if (typeof message === 'string') return message;
       if (Array.isArray(message)) return message.join('. ');
-      if (error.status === 0) return 'Cannot reach the Node API. Check that the backend is running.';
+      if (error.status === 0) return 'Node Backend शी संपर्क होत नाहीये (Port 3001). Backend चालू असल्याची खात्री करा.';
+      return `Server Error (${error.status}): ${error.statusText || 'Registration failed'}`;
     }
     return 'Workspace could not be created. Check the form and try again.';
   }
