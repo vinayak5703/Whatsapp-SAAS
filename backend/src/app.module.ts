@@ -15,6 +15,9 @@ import { MessagesController } from './app/messages/messages.controller';
 import { WhatsAppController } from './app/whatsapp/whatsapp.controller';
 import { WhatsAppService } from './app/whatsapp/whatsapp.service';
 import { DashboardController } from './app/dashboard/dashboard.controller';
+import { CampaignsController } from './app/campaigns/campaigns.controller';
+import { ReportsController } from './app/reports/reports.controller';
+import { LogsController } from './app/logs/logs.controller';
 
 @Module({
   imports: [
@@ -43,6 +46,9 @@ import { DashboardController } from './app/dashboard/dashboard.controller';
     MessagesController,
     WhatsAppController,
     DashboardController,
+    CampaignsController,
+    ReportsController,
+    LogsController,
   ],
   providers: [
     DatabaseService,

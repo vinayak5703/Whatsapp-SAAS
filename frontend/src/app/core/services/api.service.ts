@@ -24,4 +24,22 @@ export class ApiService {
       .post<ApiResponse<T>>(`${environment.apiBaseUrl}/${path}`, body)
       .pipe(map((response) => response.data));
   }
+
+  delete<T>(path: string): Observable<T> {
+    return this.http
+      .delete<ApiResponse<T>>(`${environment.apiBaseUrl}/${path}`)
+      .pipe(map((response) => response.data));
+  }
+
+  put<T>(path: string, body: unknown): Observable<T> {
+    return this.http
+      .put<ApiResponse<T>>(`${environment.apiBaseUrl}/${path}`, body)
+      .pipe(map((response) => response.data));
+  }
+
+  patch<T>(path: string, body: unknown): Observable<T> {
+    return this.http
+      .patch<ApiResponse<T>>(`${environment.apiBaseUrl}/${path}`, body)
+      .pipe(map((response) => response.data));
+  }
 }

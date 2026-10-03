@@ -40,7 +40,7 @@ export interface DashboardSummary {
   queuePending: number;
   queueFailed: number;
   messageVolume: Array<{ date: string; dayLabel?: string; sent: number; failed: number }>;
-  latestMessages: Array<{ id: string; recipient: string; status: string; createdAt: string }>;
+  latestMessages: Array<{ id: string; recipient: string; status: string; createdAt: string; body?: string; hasMedia?: boolean; bodySnippet?: string }>;
 }
 
 export interface Contact {
