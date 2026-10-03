@@ -1,0 +1,15 @@
+{
+  "name": "whatsapp-saas-platform",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "backend:dev": "npm --prefix backend run dev",
+    "backend:build": "npm --prefix backend run build",
+    "frontend:start": "npm --prefix frontend run start",
+    "frontend:build": "npm --prefix frontend run build"
+  }
+}

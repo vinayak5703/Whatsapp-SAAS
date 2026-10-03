@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+.angular/
+*.tsbuildinfo
+*.log
+.env
+.env.*
+!.env.example
+sessions/whatsapp_auth/
+sessions/
+.vscode/
+.idea/
