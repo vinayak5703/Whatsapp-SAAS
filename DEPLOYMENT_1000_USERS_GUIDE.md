@@ -1,33 +1,42 @@
 # 🚀 MsgFlow SaaS — 1,000 Concurrent Users Deployment & Scaling Architecture
 
-हा दस्तऐवज (Guide) **MsgFlow WhatsApp SaaS Platform** ला **1,000+ सक्रिय युझर्स / बिझनेस टेनंट्स** साठी क्लाउड किंवा VPS वर सुरक्षित, जलद आणि अखंड (Zero-Downtime) चालवण्यासाठी सविस्तर मार्गदर्शक आहे.
+This document (Guide) provides a detailed guide for running the **MsgFlow WhatsApp SaaS Platform** securely, efficiently, and with zero downtime on a cloud or VPS environment for **1,000+ active users/business tenants**.
 
 ---
 
 ## 🖥️ 1. Server Hardware & Infrastructure Sizing (1000 Users)
 
-| Component | Minimum Spec (1000 Users) | Recommended (High Availability) |
-| :--- | :--- | :--- |
-| **Server / VPS** | 4 vCPU, 8 GB RAM | 8 vCPU, 16 GB RAM |
-| **Database** | PostgreSQL 16 (4 GB RAM allocated) | Managed PostgreSQL (RDS / DigitalOcean DB) |
-| **Caching / Queue** | Redis 7 (2 GB RAM) | Managed Redis (Upstash / Redis Cloud) |
-| **Storage (Media)** | 50 GB NVMe SSD | S3 / Cloudflare R2 / MinIO |
-| **OS** | Ubuntu 22.04 / 24.04 LTS | Ubuntu LTS / Debian |
+| Component           | Minimum Spec (1000 Users)          | Recommended (High Availability)            |
+| :------------------ | :--------------------------------- | :----------------------------------------- |
+| **Server / VPS**    | 4 vCPU, 8 GB RAM                   | 8 vCPU, 16 GB RAM                          |
+| **Database**        | PostgreSQL 16 (4 GB RAM allocated) | Managed PostgreSQL (RDS / DigitalOcean DB) |
+| **Caching / Queue** | Redis 7 (2 GB RAM)                 | Managed Redis (Upstash / Redis Cloud)      |
+| **Storage (Media)** | 50 GB NVMe SSD                     | S3 / Cloudflare R2 / MinIO                 |
+| **OS**              | Ubuntu 22.04 / 24.04 LTS           | Ubuntu LTS / Debian                        |
 
 ---
 
 ## ⚡ 2. 1000 Users Concurrency Optimizations Implemented in Code
 
-1. **Atomic File Locking & Multi-Tenant Storage (`storage.util.ts`)**:
-   - `atomicWriteJson()` आणि `safeReadJson()` मुळे एकाच क्षणी शेकडो युझर्सनी कॅम्पेन, रिपोर्ट्स किंवा सेटिंग्स अपडेट केले तरी फाइल्स करप्ट किंवा लॉक होत नाहीत.
-2. **RAM & OOM (Out-of-Memory) Protection**:
-   - मेसेज हिस्टरी RAM मध्ये 1,000 ते 5,000 रेकॉर्ड्सपर्यंत मर्यादित ठेवली असून जुने रेकॉर्ड्स आपोआप डिस्क/डेटाबेसवर आर्काइव्ह होतात.
-3. **Multi-Core PM2 Cluster Mode (`ecosystem.config.js`)**:
-   - `instances: 'max'` मुळे सर्व CPU Cores वर बॅकएंडचे मल्टिपल थ्रेड्स चालतात.
-4. **PostgreSQL Connection Pooling (`database.service.ts`)**:
-   - एकाच वेळी 1000 युझर्सच्या विनंत्या हाताळण्यासाठी Connection Pool `DATABASE_POOL_MAX=50-100` वर सेट केले आहे.
-5. **Universal Host & CORS Binding (`main.ts`)**:
-   - 0.0.0.0 होस्ट बाइंडिंग आणि डायनॅमिक CORS सपोर्ट.
+1. **Atomic File Locking & Multi-Tenant Storage (`storage.util.ts`):**
+
+   * `atomicWriteJson()` and `safeReadJson()` ensure that files do not become corrupted or locked even when hundreds of users simultaneously update campaigns, reports, or settings.
+
+2. **RAM & OOM (Out-of-Memory) Protection:**
+
+   * Message history is limited to approximately 1,000–5,000 records in RAM, while older records are automatically archived to disk/database storage.
+
+3. **Multi-Core PM2 Cluster Mode (`ecosystem.config.js`):**
+
+   * `instances: 'max'` allows multiple backend processes to run across all available CPU cores.
+
+4. **PostgreSQL Connection Pooling (`database.service.ts`):**
+
+   * The connection pool is configured with `DATABASE_POOL_MAX=50-100` to handle requests from up to 1,000 concurrent users.
+
+5. **Universal Host & CORS Binding (`main.ts`):**
+
+   * Uses `0.0.0.0` host binding with dynamic CORS support.
 
 ---
 
@@ -54,17 +63,23 @@ docker-compose ps
 ```bash
 # 1. Install Node.js 20 & PM2
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+
 sudo apt install -y nodejs
+
 sudo npm install -g pm2
 
 # 2. Build Backend & Frontend
 cd backend && npm install && npm run build
+
 cd ../frontend && npm install && npm run build
 
 # 3. Start Backend with PM2 Multi-Core Cluster
 cd ..
+
 pm2 start ecosystem.config.js
+
 pm2 save
+
 pm2 startup
 ```
 
@@ -75,6 +90,7 @@ pm2 startup
 ```nginx
 server {
     listen 80;
+
     server_name app.msgflow.com;
 
     # Frontend Static Files
@@ -102,7 +118,9 @@ server {
 ---
 
 ## 🛡️ 6. Support & Contact
-कोणतीही समस्या किंवा सर्वर सेटअप सहाय्यासाठी:
-- **Lead Architect**: Vinayak Bhoskar
-- **Direct Phone**: +91 7499415916
-- **Email**: vinayakbhoskar@gmail.com
+
+For any issues or server setup assistance:
+
+* **Lead Architect:** Vinayak Bhoskar
+* **Direct Phone:** +91 7499415916
+* **Email:** [vinayak725bhoskar@gmail.com](mailto:vinayak725bhoskar@gmail.com)
