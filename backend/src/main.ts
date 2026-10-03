@@ -2,6 +2,9 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import * as express from 'express';
+import { join } from 'path';
+import { existsSync } from 'fs';
 
 import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
@@ -48,6 +51,25 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
+
+  // Serve static frontend bundle if available
+  const possiblePaths = [
+    join(__dirname, '..', '..', 'frontend', 'dist', 'whatsapp-saas-frontend', 'browser'),
+    join(process.cwd(), '..', 'frontend', 'dist', 'whatsapp-saas-frontend', 'browser'),
+    join(process.cwd(), 'dist', 'whatsapp-saas-frontend', 'browser'),
+  ];
+  const frontendDist = possiblePaths.find((p) => existsSync(p));
+
+  if (frontendDist) {
+    app.use(express.static(frontendDist));
+    app.use((req: any, res: any, next: any) => {
+      if (req.method === 'GET' && !req.path.startsWith('/api') && !req.path.startsWith('/socket.io')) {
+        return res.sendFile(join(frontendDist, 'index.html'));
+      }
+      next();
+    });
+    console.log(`MsgFlow Frontend served from: ${frontendDist}`);
+  }
 
   const port = process.env.API_PORT ? Number(process.env.API_PORT) : 3001;
   await app.listen(port, '0.0.0.0');
