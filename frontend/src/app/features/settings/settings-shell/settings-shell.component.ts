@@ -1,11 +1,11 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import {
   Building, CheckCircle2, Copy, KeyRound, Lock, LucideAngularModule,
-  RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Sparkles, Terminal,
-  User, Webhook, Zap, AlertCircle
+  RefreshCw, Save, Send, ShieldCheck, Sparkles, Terminal, Webhook,
+  Zap, AlertCircle, Code, Server, Play, FileCode, Check
 } from 'lucide-angular';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -21,7 +21,7 @@ import { AuthService } from '../../../core/auth/auth.service';
         <div>
           <p class="eyebrow">Platform Configuration</p>
           <h1>Workspace Settings & Engine Preferences</h1>
-          <p class="page-subtitle">Configure workspace profile, broadcast throttle limits, anti-ban protection, webhook endpoints, and API security.</p>
+          <p class="page-subtitle">Configure workspace profile, broadcast throttle limits, ERP gateway integration, webhooks, and API security.</p>
         </div>
         <div class="heading-actions">
           <button class="button button-secondary" type="button" (click)="loadSettings()" [disabled]="loading()">
@@ -53,6 +53,20 @@ import { AuthService } from '../../../core/auth/auth.service';
               <strong>Workspace Profile</strong>
               <small>Business info & timezone</small>
             </div>
+          </button>
+
+          <button
+            type="button"
+            class="tab-item"
+            [class.tab-active]="activeTab() === 'erp'"
+            (click)="setTab('erp')"
+          >
+            <lucide-angular [img]="Server" [size]="18" />
+            <div class="tab-text">
+              <strong>ERP & CRM Gateway</strong>
+              <small>Tally, SAP, Billing API</small>
+            </div>
+            <span class="badge-new">NEW</span>
           </button>
 
           <button
@@ -181,7 +195,98 @@ import { AuthService } from '../../../core/auth/auth.service';
             </form>
           }
 
-          <!-- 2. BROADCAST & ANTI-BAN PREFERENCES -->
+          <!-- 2. ERP & CRM GATEWAY (NEW) -->
+          @if (activeTab() === 'erp') {
+            <div>
+              <div class="panel-head">
+                <h2>ERP, CRM & Billing Software Inbound API Gateway</h2>
+                <p>Allow your external ERP (Tally, SAP, Marg, Custom Billing / CRM) to automatically send WhatsApp messages through MsgFlow using REST API.</p>
+              </div>
+
+              <!-- ENDPOINT HIGHLIGHT BOX -->
+              <div class="erp-endpoint-box">
+                <div class="erp-endpoint-header">
+                  <span class="http-badge post-badge">POST</span>
+                  <code class="endpoint-url">http://localhost:3001/api/v1/erp/send</code>
+                  <button type="button" class="button button-secondary compact-btn" (click)="copyToClipboard('http://localhost:3001/api/v1/erp/send', 'Endpoint URL')">
+                    <lucide-angular [img]="Copy" [size]="13" /> Copy URL
+                  </button>
+                </div>
+                <div class="erp-endpoint-auth">
+                  <span><strong>Auth Header:</strong> <code>Authorization: Bearer {{ apiKey() }}</code></span>
+                </div>
+              </div>
+
+              <!-- INTERACTIVE LIVE ERP TESTER -->
+              <div class="erp-tester-card surface-muted">
+                <div class="tester-title">
+                  <lucide-angular [img]="Play" [size]="16" class="green-icon" />
+                  <strong>Live ERP Call Simulator (Test Sending from ERP)</strong>
+                </div>
+                <p class="tester-sub">Simulate a call from your ERP software to test WhatsApp dispatch in real-time.</p>
+
+                <form [formGroup]="erpTestForm" (ngSubmit)="testErpSend()" class="tester-form">
+                  <div class="form-grid">
+                    <div class="form-group">
+                      <label class="field-label">Customer Mobile Number (Recipient)</label>
+                      <input type="text" class="control" formControlName="recipient" placeholder="e.g. 917499415916" />
+                    </div>
+
+                    <div class="form-group">
+                      <label class="field-label">ERP Invoice / Order Ref ID (Optional)</label>
+                      <input type="text" class="control" formControlName="referenceId" placeholder="e.g. INV-2026-8941" />
+                    </div>
+
+                    <div class="form-group span-2">
+                      <label class="field-label">Message Payload</label>
+                      <textarea
+                        class="control"
+                        rows="3"
+                        formControlName="message"
+                        [placeholder]="'Hello {{name}}, your Invoice #{{invoiceNo}} of Rs. {{amount}} is generated successfully!'"
+                      ></textarea>
+                    </div>
+                  </div>
+
+                  <div class="tester-actions">
+                    <button class="button button-primary" type="submit" [disabled]="testingErp() || erpTestForm.invalid">
+                      <lucide-angular [img]="Send" [size]="15" [class.spin]="testingErp()" />
+                      {{ testingErp() ? 'Dispatching via ERP API…' : 'Trigger ERP API Call' }}
+                    </button>
+                  </div>
+                </form>
+
+                @if (erpTestResponse()) {
+                  <div class="erp-response-box">
+                    <strong>ERP API Response:</strong>
+                    <pre><code>{{ erpTestResponse() | json }}</code></pre>
+                  </div>
+                }
+              </div>
+
+              <!-- READY-TO-USE CODE SNIPPETS -->
+              <div class="code-samples-section">
+                <div class="code-samples-header">
+                  <div class="tab-code-buttons">
+                    <button type="button" class="c-btn" [class.c-active]="codeLang() === 'curl'" (click)="codeLang.set('curl')">cURL</button>
+                    <button type="button" class="c-btn" [class.c-active]="codeLang() === 'csharp'" (click)="codeLang.set('csharp')">C# / .NET (Tally & Desktop ERP)</button>
+                    <button type="button" class="c-btn" [class.c-active]="codeLang() === 'php'" (click)="codeLang.set('php')">PHP / Laravel (Web ERP)</button>
+                    <button type="button" class="c-btn" [class.c-active]="codeLang() === 'python'" (click)="codeLang.set('python')">Python</button>
+                    <button type="button" class="c-btn" [class.c-active]="codeLang() === 'nodejs'" (click)="codeLang.set('nodejs')">Node.js</button>
+                  </div>
+                  <button type="button" class="button button-secondary compact-btn" (click)="copyCodeSnippet()">
+                    <lucide-angular [img]="Copy" [size]="13" /> Copy Code
+                  </button>
+                </div>
+
+                <div class="code-display">
+                  <pre><code>{{ getCodeSnippet() }}</code></pre>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- 3. BROADCAST & ANTI-BAN PREFERENCES -->
           @if (activeTab() === 'messaging') {
             <form [formGroup]="messagingForm" (ngSubmit)="saveMessaging()">
               <div class="panel-head">
@@ -268,7 +373,7 @@ import { AuthService } from '../../../core/auth/auth.service';
             </form>
           }
 
-          <!-- 3. WEBHOOKS & API KEYS -->
+          <!-- 4. WEBHOOKS & API KEYS -->
           @if (activeTab() === 'webhooks') {
             <div>
               <div class="panel-head">
@@ -322,7 +427,7 @@ import { AuthService } from '../../../core/auth/auth.service';
             </div>
           }
 
-          <!-- 4. SECURITY & PASSWORD -->
+          <!-- 5. SECURITY & PASSWORD -->
           @if (activeTab() === 'security') {
             <form [formGroup]="securityForm" (ngSubmit)="savePassword()">
               <div class="panel-head">
@@ -356,7 +461,7 @@ import { AuthService } from '../../../core/auth/auth.service';
             </form>
           }
 
-          <!-- 5. PLAN & QUOTAS -->
+          <!-- 6. PLAN & QUOTAS -->
           @if (activeTab() === 'billing') {
             <div>
               <div class="panel-head">
@@ -458,6 +563,7 @@ import { AuthService } from '../../../core/auth/auth.service';
       cursor: pointer;
       text-align: left;
       transition: all 0.2s ease;
+      position: relative;
     }
     .tab-item:hover {
       background: var(--surface-muted);
@@ -471,6 +577,18 @@ import { AuthService } from '../../../core/auth/auth.service';
     .tab-text { display: flex; flex-direction: column; }
     .tab-text strong { font-size: 13px; font-weight: 700; }
     .tab-text small { font-size: 10px; color: var(--ink-faint); margin-top: 1px; }
+
+    .badge-new {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      background: #0284c7;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
 
     .settings-content {
       padding: 24px;
@@ -497,6 +615,88 @@ import { AuthService } from '../../../core/auth/auth.service';
       padding-top: 18px;
       border-top: 1px solid var(--line);
     }
+
+    /* ERP Endpoint Box */
+    .erp-endpoint-box {
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      background: var(--green-wash);
+      margin-bottom: 20px;
+    }
+    .erp-endpoint-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .http-badge {
+      font-size: 11px;
+      font-weight: 900;
+      padding: 3px 8px;
+      border-radius: 5px;
+    }
+    .post-badge { background: #10b981; color: #fff; }
+    .endpoint-url { font-family: monospace; font-size: 13px; font-weight: 700; color: var(--ink); }
+    .erp-endpoint-auth { font-size: 11px; color: var(--ink-soft); }
+    .erp-endpoint-auth code { background: var(--surface); padding: 3px 6px; border-radius: 4px; border: 1px solid var(--line); font-family: monospace; }
+
+    /* ERP Tester Card */
+    .erp-tester-card {
+      padding: 18px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      margin-bottom: 24px;
+    }
+    .tester-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+    .green-icon { color: var(--green); }
+    .tester-sub { font-size: 11px; color: var(--ink-soft); margin: 0 0 16px; }
+    .tester-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+
+    .erp-response-box {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+    }
+    .erp-response-box strong { font-size: 11px; color: var(--green); display: block; margin-bottom: 6px; }
+    .erp-response-box pre { margin: 0; font-family: monospace; font-size: 11px; color: var(--ink); overflow-x: auto; }
+
+    /* Code Samples */
+    .code-samples-section {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .code-samples-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--surface-muted);
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tab-code-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+    .c-btn {
+      background: transparent;
+      border: 1px solid var(--line);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ink-soft);
+      cursor: pointer;
+    }
+    .c-btn:hover { background: var(--line); color: var(--ink); }
+    .c-btn.c-active { background: var(--green); color: #fff; border-color: var(--green); }
+
+    .code-display { padding: 16px; background: #0f172a; overflow-x: auto; }
+    .code-display pre { margin: 0; }
+    .code-display code { font-family: Consolas, Monaco, monospace; font-size: 12px; color: #38bdf8; line-height: 1.5; }
 
     /* Anti Ban Card */
     .anti-ban-shield {
@@ -602,9 +802,13 @@ export class SettingsShellComponent implements OnInit {
   readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
 
-  readonly activeTab = signal<'general' | 'messaging' | 'webhooks' | 'security' | 'billing'>('general');
+  readonly activeTab = signal<'general' | 'erp' | 'messaging' | 'webhooks' | 'security' | 'billing'>('general');
   readonly loading = signal(true);
   readonly saving = signal(false);
+  readonly testingErp = signal(false);
+  readonly erpTestResponse = signal<any>(null);
+  readonly codeLang = signal<'curl' | 'csharp' | 'php' | 'python' | 'nodejs'>('curl');
+
   readonly toastMessage = signal('');
   readonly toastType = signal<'success' | 'error'>('success');
 
@@ -613,6 +817,7 @@ export class SettingsShellComponent implements OnInit {
 
   // Icons
   readonly Building = Building;
+  readonly Server = Server;
   readonly Zap = Zap;
   readonly Webhook = Webhook;
   readonly Lock = Lock;
@@ -624,6 +829,8 @@ export class SettingsShellComponent implements OnInit {
   readonly ShieldCheck = ShieldCheck;
   readonly CheckCircle2 = CheckCircle2;
   readonly AlertCircle = AlertCircle;
+  readonly Play = Play;
+  readonly Send = Send;
 
   readonly profileForm: FormGroup = this.fb.group({
     workspaceName: ['MsgFlow Cloud Automation', Validators.required],
@@ -633,6 +840,12 @@ export class SettingsShellComponent implements OnInit {
     countryCode: ['+91'],
     timezone: ['Asia/Kolkata (IST)'],
     language: ['mr'],
+  });
+
+  readonly erpTestForm: FormGroup = this.fb.group({
+    recipient: ['917499415916', Validators.required],
+    referenceId: ['INV-2026-4091'],
+    message: ['Hello! Your order/invoice #INV-2026-4091 of Rs. 4,500 has been created successfully. Thank you for your business! - MsgFlow ERP', Validators.required],
   });
 
   readonly messagingForm: FormGroup = this.fb.group({
@@ -658,7 +871,7 @@ export class SettingsShellComponent implements OnInit {
   ngOnInit(): void {
     this.route.params.subscribe((params) => {
       const section = params['section'];
-      if (section && ['general', 'messaging', 'webhooks', 'security', 'billing'].includes(section)) {
+      if (section && ['general', 'erp', 'messaging', 'webhooks', 'security', 'billing'].includes(section)) {
         this.activeTab.set(section as any);
       }
     });
@@ -666,7 +879,7 @@ export class SettingsShellComponent implements OnInit {
     this.loadSettings();
   }
 
-  setTab(tab: 'general' | 'messaging' | 'webhooks' | 'security' | 'billing'): void {
+  setTab(tab: 'general' | 'erp' | 'messaging' | 'webhooks' | 'security' | 'billing'): void {
     this.activeTab.set(tab);
     this.toastMessage.set('');
   }
@@ -690,11 +903,37 @@ export class SettingsShellComponent implements OnInit {
     });
   }
 
+  testErpSend(): void {
+    if (this.erpTestForm.invalid) return;
+    this.testingErp.set(true);
+    this.erpTestResponse.set(null);
+
+    const payload = {
+      to: this.erpTestForm.value.recipient,
+      message: this.erpTestForm.value.message,
+      referenceId: this.erpTestForm.value.referenceId,
+      apiKey: this.apiKey(),
+    };
+
+    this.api.post<any>('erp/send', payload).subscribe({
+      next: (res) => {
+        this.testingErp.set(false);
+        this.erpTestResponse.set(res);
+        this.showToast('ERP WhatsApp message dispatched successfully!');
+      },
+      error: (err) => {
+        this.testingErp.set(false);
+        this.erpTestResponse.set({ error: err?.error?.message || 'Could not send message from ERP' });
+        this.showToast('ERP API call returned an error.', 'error');
+      },
+    });
+  }
+
   saveProfile(): void {
     if (this.profileForm.invalid) return;
     this.saving.set(true);
     this.api.put<any>('settings/profile', this.profileForm.value).subscribe({
-      next: (res) => {
+      next: () => {
         this.saving.set(false);
         this.showToast('Workspace profile settings saved successfully!');
       },
@@ -709,7 +948,7 @@ export class SettingsShellComponent implements OnInit {
     if (this.messagingForm.invalid) return;
     this.saving.set(true);
     this.api.put<any>('settings/messaging', this.messagingForm.value).subscribe({
-      next: (res) => {
+      next: () => {
         this.saving.set(false);
         this.showToast('Broadcast & Anti-Ban rules saved successfully!');
       },
@@ -758,7 +997,7 @@ export class SettingsShellComponent implements OnInit {
     }
     this.saving.set(true);
     this.api.put<any>('settings/security/password', { newPassword }).subscribe({
-      next: (res) => {
+      next: () => {
         this.saving.set(false);
         this.securityForm.reset();
         this.showToast('Password updated successfully!');
@@ -773,6 +1012,117 @@ export class SettingsShellComponent implements OnInit {
   copyToClipboard(text: string, label: string): void {
     navigator.clipboard.writeText(text);
     this.showToast(`${label} copied to clipboard!`);
+  }
+
+  copyCodeSnippet(): void {
+    this.copyToClipboard(this.getCodeSnippet(), 'Code snippet');
+  }
+
+  getCodeSnippet(): string {
+    const key = this.apiKey();
+    switch (this.codeLang()) {
+      case 'curl':
+        return `curl -X POST http://localhost:3001/api/v1/erp/send \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer ${key}" \\
+  -d '{
+    "to": "917499415916",
+    "message": "Hello Rahul, your Invoice #INV-1024 for Rs. 4,500 is ready.",
+    "referenceId": "INV-1024"
+  }'`;
+
+      case 'csharp':
+        return `using System;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+
+// C# / .NET Example for Tally, SAP, or Windows Billing Software
+public class ErpWhatsAppSender
+{
+    private static readonly HttpClient client = new HttpClient();
+
+    public static async Task SendInvoiceAlert(string customerPhone, string invoiceNo, decimal amount)
+    {
+        var url = "http://localhost:3001/api/v1/erp/send";
+        client.DefaultRequestHeaders.Clear();
+        client.DefaultRequestHeaders.Add("Authorization", "Bearer ${key}");
+
+        var json = $"{{\\"to\\":\\"{customerPhone}\\",\\"message\\":\\"Hello, your Invoice #{invoiceNo} of Rs. {amount} is ready.\\",\\"referenceId\\":\\"{invoiceNo}\\"}}";
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync(url, content);
+        var result = await response.Content.ReadAsStringAsync();
+        Console.WriteLine("MsgFlow ERP Response: " + result);
+    }
+}`;
+
+      case 'php':
+        return `<?php
+// PHP / Laravel Web ERP Example
+$url = 'http://localhost:3001/api/v1/erp/send';
+$apiKey = '${key}';
+
+$data = [
+    'to' => '917499415916',
+    'message' => 'Hello Vinayak, your ERP order has been confirmed successfully!',
+    'referenceId' => 'ORD-9842'
+];
+
+$ch = curl_init($url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Content-Type: application/json',
+    'Authorization: Bearer ' . $apiKey
+]);
+
+$response = curl_exec($ch);
+curl_close($ch);
+echo $response;
+?>`;
+
+      case 'python':
+        return `import requests
+
+# Python ERP / Django / FastAPI integration
+url = "http://localhost:3001/api/v1/erp/send"
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer ${key}"
+}
+payload = {
+    "to": "917499415916",
+    "message": "Dear Customer, payment reminder for Invoice #INV-5501. Thank you.",
+    "referenceId": "INV-5501"
+}
+
+response = requests.post(url, json=payload, headers=headers)
+print("ERP Status:", response.status_code)
+print("Response:", response.json())`;
+
+      case 'nodejs':
+        return `const axios = require('axios');
+
+async function sendFromErp() {
+  const url = 'http://localhost:3001/api/v1/erp/send';
+  const response = await axios.post(url, {
+    to: '917499415916',
+    message: 'Hello, your shipment has been dispatched. Tracking: TRK9942',
+    referenceId: 'SHP-9942'
+  }, {
+    headers: {
+      'Authorization': 'Bearer ${key}',
+      'Content-Type': 'application/json'
+    }
+  });
+
+  console.log('MsgFlow Response:', response.data);
+}
+
+sendFromErp();`;
+    }
   }
 
   private showToast(msg: string, type: 'success' | 'error' = 'success'): void {

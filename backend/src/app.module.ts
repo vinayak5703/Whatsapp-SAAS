@@ -19,6 +19,7 @@ import { CampaignsController } from './app/campaigns/campaigns.controller';
 import { ReportsController } from './app/reports/reports.controller';
 import { LogsController } from './app/logs/logs.controller';
 import { SettingsController } from './app/settings/settings.controller';
+import { ErpController } from './app/erp/erp.controller';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { SettingsController } from './app/settings/settings.controller';
     ReportsController,
     LogsController,
     SettingsController,
+    ErpController,
   ],
   providers: [
     DatabaseService,
