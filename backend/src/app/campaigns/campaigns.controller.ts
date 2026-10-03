@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Public } from '../auth/auth.decorators';
 import { WhatsAppService, MediaPayload } from '../whatsapp/whatsapp.service';
+import { atomicWriteJson, safeReadJson } from '../utils/storage.util';
 
 export interface CampaignRecord {
   id: string;
@@ -234,13 +235,7 @@ export class CampaignsController {
 
   private loadCampaignsFromDisk(): void {
     try {
-      if (existsSync(this.campaignsFilePath)) {
-        const raw = readFileSync(this.campaignsFilePath, 'utf-8');
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          this.campaigns = parsed;
-        }
-      }
+      this.campaigns = safeReadJson<CampaignRecord[]>(this.campaignsFilePath, []);
     } catch {
       this.campaigns = [];
     }
@@ -248,9 +243,7 @@ export class CampaignsController {
 
   private saveCampaignsToDisk(): void {
     try {
-      const dir = join(process.cwd(), 'sessions');
-      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-      writeFileSync(this.campaignsFilePath, JSON.stringify(this.campaigns, null, 2), 'utf-8');
+      atomicWriteJson(this.campaignsFilePath, this.campaigns);
     } catch {}
   }
 }

@@ -12,6 +12,7 @@ import makeWASocket, {
 } from '@whiskeysockets/baileys';
 
 import { DatabaseService } from '../database/database.service';
+import { atomicWriteJson, safeReadJson } from '../utils/storage.util';
 
 export type WhatsAppStatus = 'connected' | 'connecting' | 'qr_required' | 'disconnected' | 'error';
 
@@ -139,14 +140,11 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
 
   private loadPersistedHistory(): void {
     try {
-      if (existsSync(this.messageHistoryFilePath)) {
-        const raw = readFileSync(this.messageHistoryFilePath, 'utf-8');
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          this.messageHistory.length = 0;
-          this.messageHistory.push(...parsed);
-          this.logger.log(`Loaded ${this.messageHistory.length} persisted outbound messages from disk.`);
-        }
+      const parsed = safeReadJson<any[]>(this.messageHistoryFilePath, []);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        this.messageHistory.length = 0;
+        this.messageHistory.push(...parsed);
+        this.logger.log(`Loaded ${this.messageHistory.length} persisted outbound messages from disk.`);
       }
     } catch (err) {
       this.logger.warn('Could not load message history from disk:', err);
@@ -155,9 +153,7 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
 
   private persistMessageHistory(): void {
     try {
-      const dir = join(process.cwd(), 'sessions');
-      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-      writeFileSync(this.messageHistoryFilePath, JSON.stringify(this.messageHistory.slice(0, 1000), null, 2), 'utf-8');
+      atomicWriteJson(this.messageHistoryFilePath, this.messageHistory.slice(0, 1000));
     } catch (err) {
       this.logger.warn('Could not persist message history to disk:', err);
     }

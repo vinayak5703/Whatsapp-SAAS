@@ -3,71 +3,52 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { JwtAuthGuard } from '../auth/auth.guards';
+import { atomicWriteJson, safeReadJson } from '../utils/storage.util';
 
 const SETTINGS_FILE = path.join(process.cwd(), 'sessions', 'workspace_settings.json');
 
+const DEFAULT_SETTINGS = {
+  profile: {
+    workspaceName: 'MsgFlow Cloud Automation',
+    contactEmail: 'vinayakbhoskar@gmail.com',
+    contactPhone: '+917499415916',
+    contactPerson: 'Vinayak Bhoskar',
+    timezone: 'Asia/Kolkata (IST)',
+    countryCode: '+91',
+    language: 'mr',
+  },
+  messaging: {
+    speedMode: 'balanced', // 'fast' | 'balanced' | 'safe'
+    batchDelaySeconds: 4,
+    antiBanProtection: true,
+    autoRetryFailed: true,
+    maxRetries: 3,
+    typingSimulation: true,
+    includeOptOut: false,
+    optOutText: 'Reply STOP to unsubscribe from messages.',
+  },
+  webhooks: {
+    apiKey: 'msgflow_live_' + crypto.randomBytes(16).toString('hex'),
+    webhookUrl: 'https://api.yourdomain.com/webhooks/whatsapp',
+    webhookSecret: 'whsec_' + crypto.randomBytes(12).toString('hex'),
+    events: ['message.sent', 'message.delivered', 'message.failed', 'message.received'],
+    enabled: true,
+  },
+  billing: {
+    planName: 'MsgFlow Enterprise / Pro',
+    status: 'active',
+    channelsAllowed: 1,
+    messageQuota: 'Unlimited',
+    validUntil: 'Lifetime Active',
+  },
+};
+
 function getSavedSettings(): any {
-  try {
-    if (fs.existsSync(SETTINGS_FILE)) {
-      return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
-    }
-  } catch {
-    // fallback
-  }
-
-  const defaultSettings = {
-    profile: {
-      workspaceName: 'MsgFlow Cloud Automation',
-      contactEmail: 'vinayakbhoskar@gmail.com',
-      contactPhone: '+917499415916',
-      contactPerson: 'Vinayak Bhoskar',
-      timezone: 'Asia/Kolkata (IST)',
-      countryCode: '+91',
-      language: 'mr',
-    },
-    messaging: {
-      speedMode: 'balanced', // 'fast' | 'balanced' | 'safe'
-      batchDelaySeconds: 4,
-      antiBanProtection: true,
-      autoRetryFailed: true,
-      maxRetries: 3,
-      typingSimulation: true,
-      includeOptOut: false,
-      optOutText: 'Reply STOP to unsubscribe from messages.',
-    },
-    webhooks: {
-      apiKey: 'msgflow_live_' + crypto.randomBytes(16).toString('hex'),
-      webhookUrl: 'https://api.yourdomain.com/webhooks/whatsapp',
-      webhookSecret: 'whsec_' + crypto.randomBytes(12).toString('hex'),
-      events: ['message.sent', 'message.delivered', 'message.failed', 'message.received'],
-      enabled: true,
-    },
-    billing: {
-      planName: 'MsgFlow Enterprise / Pro',
-      status: 'active',
-      channelsAllowed: 1,
-      messageQuota: 'Unlimited',
-      validUntil: 'Lifetime Active',
-    },
-  };
-
-  try {
-    const dir = path.dirname(SETTINGS_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(defaultSettings, null, 2));
-  } catch {}
-
-  return defaultSettings;
+  return safeReadJson(SETTINGS_FILE, DEFAULT_SETTINGS);
 }
 
 function saveSettings(data: any) {
-  try {
-    const dir = path.dirname(SETTINGS_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2));
-  } catch (err) {
-    console.error('Error saving settings to disk:', err);
-  }
+  atomicWriteJson(SETTINGS_FILE, data);
 }
 
 @Controller('settings')
