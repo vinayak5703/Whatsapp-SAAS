@@ -18,6 +18,7 @@ import { DashboardController } from './app/dashboard/dashboard.controller';
 import { CampaignsController } from './app/campaigns/campaigns.controller';
 import { ReportsController } from './app/reports/reports.controller';
 import { LogsController } from './app/logs/logs.controller';
+import { SettingsController } from './app/settings/settings.controller';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { LogsController } from './app/logs/logs.controller';
     CampaignsController,
     ReportsController,
     LogsController,
+    SettingsController,
   ],
   providers: [
     DatabaseService,
