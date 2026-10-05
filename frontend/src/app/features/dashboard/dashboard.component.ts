@@ -1,7 +1,8 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
+import { interval, Subscription } from 'rxjs';
 import {
   Activity, ArrowDownRight, ArrowUpRight, BarChart3, CheckCircle2, CircleAlert, Clock3, ContactRound,
   FileImage, FileText, Layers, MessageCircle, MessageSquare, Music, Radio, RefreshCw, Send, Sparkles, Users, UsersRound, Video,
@@ -22,6 +23,9 @@ import { ApiService } from '../../core/services/api.service';
           <p class="page-subtitle">Real-time stats of your connected WhatsApp channel, broadcast volume, and message delivery records.</p>
         </div>
         <div class="heading-actions">
+          @if (lastUpdated()) {
+            <span class="last-updated-badge">🟢 Live · Updated {{ lastUpdated() | date:'HH:mm:ss' }}</span>
+          }
           <button class="button button-secondary" type="button" (click)="loadDashboard()" [disabled]="loading()">
             <lucide-angular [img]="RefreshCw" [size]="15" [class.spin]="loading()" />
             {{ loading() ? 'Updating…' : 'Refresh Data' }}
@@ -324,17 +328,20 @@ import { ApiService } from '../../core/services/api.service';
     .connection-note { display:flex; align-items:center; gap:9px; margin:-11px 0 15px; border:1px solid var(--coral); border-radius:7px; background:var(--coral-wash); padding:10px 12px; color:var(--coral); font-size:12px; }
     .spin { animation: spin 1s linear infinite; }
     @keyframes spin { 100% { transform: rotate(360deg); } }
+    .last-updated-badge { font-size:10px; font-weight:700; color:var(--green); background:var(--green-wash); padding:4px 10px; border-radius:20px; display:inline-flex; align-items:center; gap:5px; }
 
     @media(max-width:1100px) { .metrics-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } .shortcuts-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
     @media(max-width:760px) { .metrics-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; } .shortcuts-grid { grid-template-columns:1fr; } .dashboard-grid { grid-template-columns:1fr; } .chart-panel,.connection-panel,.activity-panel { padding:15px; } .chart { gap:7px; } }
     @media(max-width:420px) { .metric { min-height:105px; padding:12px; } .metric-value { font-size:22px; } }
   `],
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   readonly summary = signal<DashboardSummary | null>(null);
   readonly loading = signal(true);
   readonly error = signal('');
+  readonly lastUpdated = signal<Date | null>(null);
+  private pollSub?: Subscription;
   readonly RefreshCw = RefreshCw;
   readonly Activity = Activity;
   readonly CircleAlert = CircleAlert;
@@ -356,19 +363,32 @@ export class DashboardComponent implements OnInit {
     { label: 'Messages read', value: null as number | null, note: 'Read receipts received', tone: '', icon: MessageCircle },
   ]);
 
-  ngOnInit(): void { this.loadDashboard(); }
+  ngOnInit(): void {
+    this.loadDashboard();
+    // Auto-refresh every 30 seconds (silent — no flicker)
+    this.pollSub = interval(30000).subscribe(() => this.loadDashboard(true));
+  }
 
-  loadDashboard(): void {
-    this.loading.set(true);
-    this.error.set('');
+  ngOnDestroy(): void {
+    this.pollSub?.unsubscribe();
+  }
+
+  loadDashboard(silent = false): void {
+    if (!silent) {
+      this.loading.set(true);
+      this.error.set('');
+    }
     this.api.get<DashboardSummary>('dashboard/summary').subscribe({
       next: (summary) => {
         this.summary.set(summary);
         this.metrics.update((cards) => cards.map((card) => ({ ...card, value: this.valueFor(card.label, summary) })));
         this.loading.set(false);
+        this.lastUpdated.set(new Date());
       },
       error: () => {
-        this.error.set('Dashboard data is unavailable. The backend dashboard endpoint must be connected.');
+        if (!silent) {
+          this.error.set('Dashboard data is unavailable. The backend dashboard endpoint must be connected.');
+        }
         this.loading.set(false);
       },
     });
